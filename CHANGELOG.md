@@ -1,5 +1,15 @@
 # Changelog
 
+## V1.0.1 — 2026-04-27
+
+**元数据补登** — V1.0.1 已合入代码 (`__version__` 已是 1.0.1) 但 CHANGELOG 漏更,本段补记。
+
+- 代码顶部 `__version__ = "1.0.1"` 与 `--version` 输出 `bgm-gen 1.0.1` 已同步。
+- 实质行为相对 V1.0.0 暂未追加新功能,本次升级是"对齐代号 / CHANGELOG 补登",非行为变更。
+- 后续小修复 (mood 关键词扩展、loudnorm 归一化) 计划走 V1.1.0+。
+
+**为什么** — 总导演 (director, V0.2.2) 接入 bgm-gen 时检测到 `tool_versions.bgm-gen` 与 `--version` 不一致 (CHANGELOG 顶 1.0.0 vs 代码 1.0.1)。补登避免后续 director smoke test 校验失败。
+
 ## V1.0.0 — 2026-04-27
 
 **新增** — 初始化 bgm-gen BGM 生成 CLI。
