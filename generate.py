@@ -6,21 +6,71 @@ V1: keyword-matched mood presets (8 moods); single-file CLI.
 from __future__ import annotations
 
 import argparse
+import json
 import random
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
-import pretty_midi
-
-__version__ = "1.0.0"
+__version__ = "1.0.2"
 
 ROOT = Path(__file__).resolve().parent
 OUT_DIR = ROOT / "out"
 SOUNDFONT = "/usr/share/sounds/sf2/FluidR3_GM.sf2"
+
+
+def _health_dict() -> dict:
+    deps, checks, reasons = [], [], []
+    # python deps
+    try:
+        import pretty_midi as _pm
+        ver = getattr(_pm, "__version__", "unknown")
+        deps.append({"name": "pretty_midi", "kind": "python", "ok": True,
+                     "found": ver, "required": "any"})
+    except ImportError as e:
+        deps.append({"name": "pretty_midi", "kind": "python", "ok": False, "error": str(e)})
+        reasons.append("pretty_midi not installed (critical)")
+    # binary deps
+    fp = shutil.which("fluidsynth")
+    deps.append({"name": "fluidsynth", "kind": "binary", "ok": fp is not None,
+                 "found": fp or "", "required": "any"})
+    if fp is None:
+        reasons.append("fluidsynth not on PATH (critical)")
+    # data file deps
+    sf_ok = Path(SOUNDFONT).exists()
+    deps.append({"name": "FluidR3_GM.sf2", "kind": "file", "ok": sf_ok,
+                 "found": SOUNDFONT if sf_ok else "", "required": SOUNDFONT})
+    if not sf_ok:
+        reasons.append(f"SoundFont missing: {SOUNDFONT} (critical)")
+
+    crit = [d for d in deps if not d["ok"]]
+    healthy = not crit
+    severity = "ok" if healthy else "broken"
+    return {
+        "name": "bgm-gen", "version": __version__,
+        "healthy": healthy,
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "deps": deps, "env": [], "checks": checks, "reasons": reasons,
+        "extra": {
+            "runtime": f"python{sys.version_info.major}.{sys.version_info.minor}",
+            "venv": str(Path(sys.executable).parent.parent),
+            "severity": severity,
+        },
+    }
+
+
+def _emit_health_or_version() -> None:
+    if "--version" in sys.argv and "--json" in sys.argv:
+        h = _health_dict()
+        print(json.dumps(h, indent=2, ensure_ascii=False))
+        sys.exit(0 if h["healthy"] else (1 if h["extra"]["severity"] == "degraded" else 2))
+
+# GM drum map (channel 10) pitches used by drum kits below.
+KICK, SNARE, HAT, LOW_TOM, MARACAS = 36, 38, 42, 41, 70
 
 # Each preset: tempo (BPM); root (MIDI pitch of tonic, ~C4=60);
 # scale (semitone offsets from root, melodic pool);
@@ -67,18 +117,13 @@ KEYWORDS = {
 
 def detect_mood(prompt: str) -> str:
     text = prompt.lower()
-    scores = {m: 0 for m in PRESETS}
-    for mood, kws in KEYWORDS.items():
-        for kw in kws:
-            if kw.lower() in text:
-                scores[mood] += 1
+    scores = {mood: sum(kw in text for kw in kws) for mood, kws in KEYWORDS.items()}
     best = max(scores, key=scores.get)
     return best if scores[best] > 0 else "calm"
 
 
 def _add_drums(drum: pretty_midi.Instrument, kit: str, t: float, beat: int,
-               beat_sec: float, sub: float) -> None:
-    KICK, SNARE, HAT, LOW_TOM, MARACAS = 36, 38, 42, 41, 70
+               sub: float) -> None:
     if kit == "chase":  # 16ths hat + kick on 1/3, snare on 2/4
         for s in range(4):
             drum.notes.append(pretty_midi.Note(velocity=70, pitch=HAT,
@@ -103,7 +148,8 @@ def _add_drums(drum: pretty_midi.Instrument, kit: str, t: float, beat: int,
                                            start=t + sub, end=t + sub + 0.05))
 
 
-def build_midi(mood: str, duration: float, seed: int | None) -> pretty_midi.PrettyMIDI:
+def build_midi(mood: str, duration: float, seed: int | None):
+    import pretty_midi  # imported here so --version --json works without pretty_midi installed
     p = PRESETS[mood]
     rng = random.Random(seed)
     pm = pretty_midi.PrettyMIDI(initial_tempo=p["tempo"])
@@ -126,10 +172,10 @@ def build_midi(mood: str, duration: float, seed: int | None) -> pretty_midi.Pret
     sub = beat_sec / 2
     t = bar_sec  # let pad establish for one bar before lead enters
     end_t = n_bars * bar_sec
+    scale_pool = [p["root"] + 12 + o for o in p["scale"]]
+    chord_pools = [[p["root"] + 12 + o for o in c] for c in p["chords"]]
     while t < end_t - 0.05:
-        chord_idx = int(t / bar_sec) % len(p["chords"])
-        chord_tones = [p["root"] + 12 + o for o in p["chords"][chord_idx]]
-        scale_pool = [p["root"] + 12 + o for o in p["scale"]]
+        chord_tones = chord_pools[int(t / bar_sec) % len(chord_pools)]
         pitch = rng.choice(chord_tones if rng.random() < 0.6 else scale_pool)
         dur = sub if rng.random() < 0.7 else beat_sec
         lead.notes.append(pretty_midi.Note(velocity=rng.randint(70, 95), pitch=pitch,
@@ -142,7 +188,7 @@ def build_midi(mood: str, duration: float, seed: int | None) -> pretty_midi.Pret
         drum = pretty_midi.Instrument(program=0, is_drum=True, name="drums")
         for i in range(n_bars):
             for beat in range(4):
-                _add_drums(drum, p["drum_kit"], i*bar_sec + beat*beat_sec, beat, beat_sec, sub)
+                _add_drums(drum, p["drum_kit"], i*bar_sec + beat*beat_sec, beat, sub)
         pm.instruments.append(drum)
 
     return pm
@@ -159,6 +205,7 @@ def render_wav(midi_path: Path, wav_path: Path) -> None:
 
 
 def main() -> int:
+    _emit_health_or_version()
     p = argparse.ArgumentParser(prog="generate.py",
                                 description="Generate BGM via MIDI + fluidsynth (local, no network).")
     p.add_argument("prompt", nargs="?", help="自然语言描述,例如 '30秒紧张追逐戏'")

@@ -1,5 +1,16 @@
 # Changelog
 
+## V1.0.2 — 2026-04-27
+
+**新增** — `--version --json` 健康自检接口(对齐 director maintainer 协议)。
+
+- `--version` 单独走 plain 输出(向后兼容)。
+- `--version --json`:输出健康 JSON,字段对齐 director 协议(`name / version / healthy / ts / deps[] / env[] / checks[] / reasons[] / extra{runtime, venv, severity}`)。退出码 `0=healthy / 1=degraded / 2=broken`。
+- 探测项:`pretty_midi` (python, critical) / `fluidsynth` (binary, PATH 上) / `FluidR3_GM.sf2` (file at `/usr/share/sounds/sf2/`)。任一缺失 → `healthy=false / severity=broken`(bgm-gen 没有降级模式,缺一不可)。
+- `pretty_midi` 顶层 import 下沉到 `build_midi()` 内部,让 `--version --json` 在 pretty_midi 缺失时仍能输出 broken JSON 而非 ImportError 直接挂。
+
+**为什么** — director (V0.3.0+) 引入统一健康自检机制。本 patch 是该协议在 bgm-gen 的实现。
+
 ## V1.0.1 — 2026-04-27
 
 **元数据补登** — V1.0.1 已合入代码 (`__version__` 已是 1.0.1) 但 CHANGELOG 漏更,本段补记。
