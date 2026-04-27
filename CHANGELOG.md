@@ -1,5 +1,19 @@
 # Changelog
 
+## V1.0.3 — 2026-04-27
+
+**Bug fix** — `_add_drums()` 也加 `import pretty_midi`(与 `build_midi()` 同 pattern)。
+
+V1.0.2 (`1f1f3c9`) 加 `--version --json` 健康自检时,把 `import pretty_midi` 从模块顶层下沉到 `build_midi()` 内部,让健康自检在 pretty_midi 缺失时仍能输出 broken JSON。**漏改了 `_add_drums()`** —— `_add_drums` 也直接引用 `pretty_midi.Note` / `pretty_midi.Instrument`,在 `build_midi → _add_drums` 调用链中触发 `NameError: name 'pretty_midi' is not defined`(任何走 drum_kit 的 mood 即:`tense / happy / epic / funny`)。
+
+director toothbrush-monsters 项目用 `funny` mood(drum_kit=shaker)直接撞上,bgm-gen 输出 0 bytes wav。
+
+**Fix**: `_add_drums()` 顶部加 `import pretty_midi`(同 `build_midi()` pattern,Python module cache 让重复 import 实质零开销)。type annotation 改为 string-form `"pretty_midi.Instrument"` 避免 module-load-time evaluation(`from __future__ import annotations` 已经在顶部,但显式更稳)。`__version__` 1.0.2 → 1.0.3。
+
+**回归测试**: `--version` plain ✓ / `--version --json` 仍正常输出健康 JSON ✓ / 实际 5s funny BGM 生成 ✓ / toothbrush 122s funny BGM 重生成 ✓。
+
+**Lesson** (同 picture-gen V0.2.0→V0.2.1 + maintainer.md §6.1 §6.7): **health-check refactor 要 grep 整个 module 找所有 use site,不只是 main()/dispatch entry**。这次错误模式跟 picture-gen V0.2.0 相同(import 下沉漏一处),证明 §6.1 自警在 maintainer 实战中 **第二次复发**。下次 director patch 应增加 §6.8 「import-decoupling refactor checklist」具体到 grep 命令模板。
+
 ## V1.0.2 — 2026-04-27
 
 **新增** — `--version --json` 健康自检接口(对齐 director maintainer 协议)。

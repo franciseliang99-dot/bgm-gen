@@ -16,7 +16,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 ROOT = Path(__file__).resolve().parent
 OUT_DIR = ROOT / "out"
@@ -122,8 +122,9 @@ def detect_mood(prompt: str) -> str:
     return best if scores[best] > 0 else "calm"
 
 
-def _add_drums(drum: pretty_midi.Instrument, kit: str, t: float, beat: int,
+def _add_drums(drum: "pretty_midi.Instrument", kit: str, t: float, beat: int,
                sub: float) -> None:
+    import pretty_midi  # V1.0.3: also imported here (V1.0.2 health-check refactor moved import to build_midi but missed _add_drums; same regression class as picture-gen V0.2.0→V0.2.1)
     if kit == "chase":  # 16ths hat + kick on 1/3, snare on 2/4
         for s in range(4):
             drum.notes.append(pretty_midi.Note(velocity=70, pitch=HAT,
