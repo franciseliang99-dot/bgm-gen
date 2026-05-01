@@ -16,7 +16,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 
 ROOT = Path(__file__).resolve().parent
 OUT_DIR = ROOT / "out"

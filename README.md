@@ -1,10 +1,10 @@
 # bgm-gen
 
-按自然语言描述生成 BGM(.wav)。本地合成,无网络、无 GPU。
+Generate background music (`.wav`) from a natural-language description. Local synthesis — no network, no GPU.
 
-路线:`prompt` → mood 关键词匹配 → `pretty_midi` 模板生成 MIDI → `fluidsynth` 用 GM SoundFont 渲染 wav。
+Pipeline: `prompt` → mood keyword match → `pretty_midi` template → `fluidsynth` rendering with a GM SoundFont.
 
-## 安装
+## Install
 
 ```bash
 sudo apt install -y fluidsynth fluid-soundfont-gm
@@ -12,22 +12,26 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
-## 用法
+## Usage
 
 ```bash
-.venv/bin/python generate.py "30 秒紧张追逐戏 BGM" -d 30
-.venv/bin/python generate.py "温馨咖啡馆背景音乐" -d 60 -o out/cafe.wav
-.venv/bin/python generate.py "悲伤" --seed 42        # 同 seed 可复现
-.venv/bin/python generate.py "..." -m epic           # 强制 mood
-.venv/bin/python generate.py --list-moods            # 看预设
+.venv/bin/python generate.py "30s tense chase scene BGM" -d 30
+.venv/bin/python generate.py "cozy cafe background music" -d 60 -o out/cafe.wav
+.venv/bin/python generate.py "sad" --seed 42        # same seed → reproducible
+.venv/bin/python generate.py "..." -m epic           # force a mood
+.venv/bin/python generate.py --list-moods            # list presets
 ```
 
-输出默认落在 `out/<纳秒时间戳>_<mood>_<时长>s.wav`。
+Output defaults to `out/<nano-timestamp>_<mood>_<duration>s.wav`.
 
-## 支持的 mood
+## Supported moods
 
-`calm / tense / sad / happy / epic / mystery / funny / cozy`,各有中英关键词触发(如"紧张/追逐/chase" → `tense`)。未命中关键词默认 `calm`。完整关键词见 `generate.py` 的 `KEYWORDS` 表。
+`calm / tense / sad / happy / epic / mystery / funny / cozy` — each triggered by EN/CN keywords (e.g. `chase / 紧张 / 追逐` → `tense`). No keyword match falls back to `calm`. Full keyword table in `generate.py`'s `KEYWORDS` dict.
 
-## 已知限制
+## Known limits
 
-GM 音色对电子 / lo-fi / 氛围乐风格弱;无响度归一化;复杂语义("80 年代日剧风晚餐")会丢细节。详见 `CHANGELOG.md`。
+GM soundfonts are weak for electronic / lo-fi / ambient styles; no loudness normalization; complex semantics ("80s Japanese drama dinner scene") lose nuance. See `CHANGELOG.md`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

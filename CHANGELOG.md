@@ -1,5 +1,9 @@
 # Changelog
 
+## V1.0.4 — 2026-04-30
+
+**Docs** — Translate README from Chinese to English for OSS visibility (other sibling tools in the director suite are already English; bgm-gen was the lone outlier). Content unchanged: same install steps, same usage examples, same mood table, same known-limits section. CN keyword examples preserved (`紧张 / 追逐` → `tense`) since the keyword matcher itself accepts both EN and CN tokens. `__version__` 1.0.3 → 1.0.4.
+
 ## V1.0.3 — 2026-04-27
 
 **Bug fix** — `_add_drums()` 也加 `import pretty_midi`(与 `build_midi()` 同 pattern)。
